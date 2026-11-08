@@ -58,6 +58,9 @@ PGPASSWORD=your-database-password
 # Separately hosted application backend
 NEXT_PUBLIC_BASE_API_URL=http://localhost:5208
 API_BASE_URL=http://localhost:3100
+
+# Public origin used to generate absolute social-sharing image URLs
+NEXT_PUBLIC_SITE_URL=https://carmine-my.vercel.app
 ```
 
 Start the development server:
@@ -81,6 +84,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `PGPASSWORD` | PostgreSQL account password. | Using PostgreSQL-backed API routes |
 | `NEXT_PUBLIC_BASE_API_URL` | Base URL for the separately hosted backend used by account, inventory, and related proxy routes. | Using backend-proxied features |
 | `API_BASE_URL` | Backend base URL used by the sell route; defaults to `http://localhost:3100`. | Using the sell workflow |
+| `NEXT_PUBLIC_SITE_URL` | Public site origin used for Open Graph and social-sharing metadata; defaults to `https://carmine-my.vercel.app`. | Change it when sharing from a different production domain |
 
 Set the URLs to services reachable from the Next.js server. Although `NEXT_PUBLIC_BASE_API_URL` has a `NEXT_PUBLIC_` prefix, it is used by server-side API routes in this application; do not put credentials or tokens in it. Keep API keys and database credentials server-side, out of browser code and Git.
 
