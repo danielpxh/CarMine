@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 // import { Car, Menu, Sun, Moon, Inbox, LogOut, User } from "lucide-react";
-import { Car, Menu, Sun, Moon, LogOut, User } from "lucide-react";
+import { Menu, Sun, Moon, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -15,8 +16,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/components/contexts/AuthContext";
 import { HeaderProps } from "@/lib/interfaces";
+import { useTheme } from "@/components/ThemeContext";
 
-export default function Header({ darkMode, toggleDarkMode }: HeaderProps) {
+export default function Header(_props: HeaderProps) {
+  void _props;
+  const { darkMode, toggleDarkMode } = useTheme();
   const [progress, setProgress] = useState(0);
   const [isToggling, setIsToggling] = useState(false);
   const { isAuthenticated, logout } = useAuth();
@@ -56,9 +60,8 @@ export default function Header({ darkMode, toggleDarkMode }: HeaderProps) {
     setIsToggling(true);
 
     // Delay the actual dark mode toggle to match the progress animation
-    setTimeout(() => {
-      toggleDarkMode();
-    }, 500);
+    toggleDarkMode();
+    setTimeout(() => setIsToggling(false), 500);
   };
 
   const handleLogout = () => {
@@ -78,18 +81,23 @@ export default function Header({ darkMode, toggleDarkMode }: HeaderProps) {
     <header
       className={`border-b ${
         darkMode ? "border-gray-700 bg-gray-800" : "border-gray-200 bg-white"
-      } shadow-sm sticky top-0 z-50`}
+      } sticky top-0 z-50`}
     >
       <div className="container mx-auto px-4 py-6">
         <nav className="flex justify-between items-center">
-          <Link href="/" className="flex items-center space-x-2">
-            <Car className="w-10 h-10 text-blue-600 dark:text-blue-400" />
-            <span
-              className={`text-3xl font-bold ${
-                darkMode ? "text-gray-100" : "text-gray-900"
-              }`}
-            >
-              CarMine
+          <Link href="/" className="flex items-center gap-3" aria-label="CarMine home">
+            <Image src="/carmine-mark.svg" alt="" width={40} height={40} />
+            <span className="flex flex-col leading-none">
+              <span
+                className={`text-[1.35rem] font-semibold tracking-[-0.045em] ${
+                  darkMode ? "text-gray-100" : "text-stone-900"
+                }`}
+              >
+                CarMine
+              </span>
+              <span className="mt-1 text-[0.58rem] font-medium uppercase tracking-[0.18em] text-stone-500 dark:text-gray-400">
+                Automotive marketplace
+              </span>
             </span>
           </Link>
           {isAuthenticated && (
@@ -166,7 +174,7 @@ export default function Header({ darkMode, toggleDarkMode }: HeaderProps) {
                 className={`hidden font-bold md:inline-flex ${
                   darkMode
                     ? "bg-white text-gray-900 hover:bg-gray-100 hover:text-gray-900"
-                    : "border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white"
+                    : "border-rose-800 text-rose-800 hover:bg-rose-800 hover:text-white"
                 } font-semibold`}
               >
                 <LogOut className="mr-2 h-4 w-4" /> Logout
@@ -178,7 +186,7 @@ export default function Header({ darkMode, toggleDarkMode }: HeaderProps) {
                   className={`hidden font-bold md:inline-flex ${
                     darkMode
                       ? "bg-white text-gray-900 hover:bg-gray-100 hover:text-gray-900"
-                      : "border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white"
+                      : "border-rose-800 text-rose-800 hover:bg-rose-800 hover:text-white"
                   } font-semibold`}
                 >
                   Sign In

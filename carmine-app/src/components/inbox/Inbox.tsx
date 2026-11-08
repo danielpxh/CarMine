@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,9 +13,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Trash2 } from "lucide-react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { useTheme } from "@/components/ThemeContext";
 
 export default function InboxPage() {
-  const [darkMode, setDarkMode] = useState(false);
+  const { darkMode, toggleDarkMode } = useTheme();
   const [messages, setMessages] = useState([
     {
       id: 1,
@@ -50,18 +51,6 @@ export default function InboxPage() {
     read: boolean;
   }>(null);
   const [unreadMessages, setUnreadMessages] = useState(2);
-
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [darkMode]);
-
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-  };
 
   const handleMessageClick = (message: {
     id: number;

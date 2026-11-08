@@ -32,6 +32,7 @@ import "react-toastify/dist/ReactToastify.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useParams } from "next/navigation";
+import { useTheme } from "@/components/ThemeContext";
 
 interface CarDetails {
   id: string;
@@ -54,14 +55,11 @@ interface CarDetails {
   condition?: string;
 }
 
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
-
-// { params }: { params: { id: string } }
 export default function CarDetailsPage() {
   const params = useParams();
   const id = params?.id as string;
 
-  const [darkMode, setDarkMode] = useState(false);
+  const { darkMode, toggleDarkMode } = useTheme();
   const [car, setCar] = useState<CarDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,45 +72,14 @@ export default function CarDetailsPage() {
     const fetchCarDetails = async () => {
       try {
         setLoading(true);
-        const response = await fetch(
-          `https://auto.dev/api/listings?apikey=${API_KEY}&page=1&limit=100`
-        );
+        const response = await fetch(`/api/car-listings/${encodeURIComponent(id)}`);
 
         if (!response.ok) {
           throw new Error("Failed to fetch car details");
         }
 
-        const data = await response.json();
-        const carRecord = data.records.find(
-          (record: { id: number }) => record.id.toString() === id
-        );
-
-        if (!carRecord) {
-          throw new Error("Car not found");
-        }
-
-        const transformedCar: CarDetails = {
-          id: carRecord.id.toString(),
-          make: carRecord.make,
-          model: carRecord.model,
-          year: carRecord.year,
-          trim: carRecord.trim,
-          price: carRecord.priceUnformatted,
-          mileage: carRecord.mileageUnformatted,
-          image_url: carRecord.primaryPhotoUrl,
-          location: `${carRecord.city}, ${carRecord.state}`,
-          exteriorColor: carRecord.displayColor || "Not Specified",
-          interiorColor: carRecord.interiorColor || "Not Specified",
-          fuelType: carRecord.fuelType || "Not Specified",
-          transmission: carRecord.transmission || "Not Specified",
-          engine: carRecord.engine || "Not Specified",
-          vin: carRecord.vin,
-          description: `${carRecord.year} ${carRecord.make} ${carRecord.model} ${carRecord.trim} with ${carRecord.mileageHumanized} located in ${carRecord.city}, ${carRecord.state}. This ${carRecord.condition} vehicle comes with a VIN of ${carRecord.vin}.`,
-          photoUrls: carRecord.photoUrls,
-          condition: carRecord.condition,
-        };
-
-        setCar(transformedCar);
+        const carRecord: CarDetails = await response.json();
+        setCar(carRecord);
       } catch (err) {
         console.error("Error fetching car details:", err);
         setError(
@@ -125,10 +92,6 @@ export default function CarDetailsPage() {
 
     fetchCarDetails();
   }, [id]);
-
-  const toggleDarkMode = () => {
-    setDarkMode((prev) => !prev);
-  };
 
   const handleShare = async () => {
     try {
@@ -193,14 +156,6 @@ export default function CarDetailsPage() {
     router.push(`/checkout?data=${encodedData}`);
   };
 
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [darkMode]);
-
   if (loading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-900">
@@ -250,11 +205,11 @@ export default function CarDetailsPage() {
         onLogout={() => console.log("Logout clicked")} // Dummy logout function
       />
 
-      <main className="container mx-auto px-16 py-6 md:py-10">
+      <main className="container mx-auto px-4 py-6 sm:px-6 md:py-10 lg:px-8">
         <div className="flex justify-between items-center mb-6">
           <Button
             onClick={() => router.push("/marketplace")}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className="bg-rose-800 text-white hover:bg-rose-900"
           >
             <ArrowLeft className="w-4 h-4 mr-1" />
             Back to Marketplace
@@ -315,7 +270,7 @@ export default function CarDetailsPage() {
                 </Badge> */}
               </div>
 
-              <p className="mt-2 text-2xl text-blue-600 dark:text-blue-400">
+              <p className="mt-2 text-2xl text-rose-800 dark:text-rose-300">
                 ${car.price.toLocaleString()}
               </p>
 

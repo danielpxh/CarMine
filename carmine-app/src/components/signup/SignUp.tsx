@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -17,9 +17,10 @@ import {
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Eye, EyeOff } from "lucide-react";
+import { useTheme } from "@/components/ThemeContext";
 
 export default function SignUpPage() {
-  const [darkMode, setDarkMode] = useState(false);
+  const { darkMode, toggleDarkMode } = useTheme();
   const [unreadMessages] = useState(2);
 
   const [name, setName] = useState("");
@@ -29,18 +30,6 @@ export default function SignUpPage() {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [passwordVisible2, setPasswordVisible2] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [darkMode]);
-
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,12 +70,18 @@ export default function SignUpPage() {
         unreadMessages={unreadMessages}
         onLogout={() => console.log("Logout clicked")}
       />
-      <section className="container mx-auto px-4 py-12 md:py-16 bg-gray-100 dark:bg-gray-900">
+      <section className="min-h-[calc(100vh-6rem)] bg-stone-50 px-4 py-12 text-gray-900 dark:bg-gray-950 dark:text-gray-100 md:py-16">
         <div className="max-w-md mx-auto">
           <h1 className="text-3xl font-bold text-center mb-6 text-gray-800 dark:text-white">
             Sign Up
           </h1>
-          <Card className="bg-gray-50 dark:bg-gray-800 border-none shadow-md">
+          <Card
+            className={`rounded-xl border shadow-sm ${
+              darkMode
+                ? "border-gray-700 bg-gray-900"
+                : "border-stone-200 bg-white"
+            }`}
+          >
             <CardHeader>
               <CardTitle className="text-2xl font-semibold text-gray-800 dark:text-white">
                 Create Account
@@ -111,7 +106,7 @@ export default function SignUpPage() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       required
-                      className="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500"
+                      className="border-stone-300 bg-white text-stone-900 focus:border-rose-800 focus:ring-rose-800 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                     />
                   </div>
                   <div className="flex flex-col space-y-1.5">
@@ -128,7 +123,7 @@ export default function SignUpPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500"
+                      className="border-stone-300 bg-white text-stone-900 focus:border-rose-800 focus:ring-rose-800 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                     />
                   </div>
                   <div className="flex flex-col space-y-2 relative">
@@ -146,7 +141,7 @@ export default function SignUpPage() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                        className="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500"
+                        className="border-stone-300 bg-white text-stone-900 focus:border-rose-800 focus:ring-rose-800 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                       />
                       {password.length > 0 && (
                         <button
@@ -178,7 +173,7 @@ export default function SignUpPage() {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         required
-                        className="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500"
+                        className="border-stone-300 bg-white text-stone-900 focus:border-rose-800 focus:ring-rose-800 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                       />
                     </div>
                     {password.length > 0 && (
@@ -196,17 +191,17 @@ export default function SignUpPage() {
                     )}
                   </div>
                 </div>
-                <Button className="w-full mt-4 bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600">
+                <Button className="mt-4 h-11 w-full bg-rose-800 text-white hover:bg-rose-900 focus:ring-rose-800">
                   Sign Up
                 </Button>
               </form>
             </CardContent>
-            <CardFooter className="flex justify-center bg-gray-50 dark:bg-gray-800">
+            <CardFooter className="flex justify-center rounded-b-xl border-t border-stone-200 dark:border-gray-700">
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 Already have an account?{" "}
                 <Link
                   href="/signin"
-                  className="text-blue-600 hover:underline dark:text-blue-500"
+                  className="text-rose-800 hover:underline dark:text-rose-300"
                 >
                   Login
                 </Link>

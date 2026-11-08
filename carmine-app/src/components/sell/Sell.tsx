@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, FormEvent, DragEvent } from "react";
+import { useState, FormEvent, DragEvent } from "react";
 import { DollarSign, Camera, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,10 +9,11 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useTheme } from "@/components/ThemeContext";
 
 export default function SellPage() {
   const router = useRouter();
-  const [darkMode, setDarkMode] = useState(false);
+  const { darkMode, toggleDarkMode } = useTheme();
   const [make, setMake] = useState("");
   const [model, setModel] = useState("");
   const [year, setYear] = useState("");
@@ -27,18 +28,6 @@ export default function SellPage() {
   const [imageUrl, setImageUrl] = useState<string>("");
   const [isFetching, setIsFetching] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [darkMode]);
-
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {

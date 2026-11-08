@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { useTheme } from "@/components/ThemeContext";
 
 interface CarRecord {
   id: string;
@@ -42,7 +43,7 @@ interface CarRecord {
 export default function CarRecordTracker() {
   const [filter, setFilter] = useState<"All" | "Rental" | "Purchase">("All");
   const [carRecords, setCarRecords] = useState<CarRecord[]>([]);
-  const [darkMode, setDarkMode] = useState(false);
+  const { darkMode, toggleDarkMode } = useTheme();
   const [loading, setLoading] = useState(true);
   const [unreadMessages] = useState(2);
   const router = useRouter();
@@ -54,18 +55,6 @@ export default function CarRecordTracker() {
 
     return () => clearTimeout(timer);
   }, []);
-
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [darkMode]);
-
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-  };
 
   useEffect(() => {
     async function fetchUserIdAndRecords() {

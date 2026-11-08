@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { Search, ShoppingCart, Loader2, Lock } from "lucide-react";
+import { Search, ShoppingCart, Loader2, Lock, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Header from "@/components/Header";
@@ -14,7 +14,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -23,20 +22,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-// import {
-//   Command,
-//   CommandGroup,
-//   CommandItem,
-//   CommandList,
-// } from "@/components/ui/command";
-// import {
-//   Popover,
-//   PopoverContent,
-//   PopoverTrigger,
-// } from "@/components/ui/popover";
 import { useAuth } from "@/components/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
+import { useTheme } from "@/components/ThemeContext";
 interface Car {
   id: string;
   make: string;
@@ -46,14 +35,44 @@ interface Car {
   price: number;
   mileage: number;
   image_url: string;
-  listed_date?: string; // Added for sorting by date
-  is_rentable?: boolean; // Added for DB cars
-  car_images?: string; // Added for S3 images
+  listed_date?: string;
+  is_rentable?: boolean;
+  car_images?: string;
 }
 
 interface Category {
   name: string;
   makes: string[];
+}
+
+interface DatabaseCar {
+  car_id: string;
+  car_make: string;
+  car_model: string;
+  car_year: number;
+  car_trim?: string;
+  car_price: number;
+  car_mileage?: number;
+  car_images?: string;
+  listed_date?: string;
+  is_rentable?: boolean;
+}
+
+function isDatabaseCar(value: unknown): value is DatabaseCar {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "car_id" in value &&
+    typeof value.car_id === "string" &&
+    "car_make" in value &&
+    typeof value.car_make === "string" &&
+    "car_model" in value &&
+    typeof value.car_model === "string" &&
+    "car_year" in value &&
+    typeof value.car_year === "number" &&
+    "car_price" in value &&
+    typeof value.car_price === "number"
+  );
 }
 
 const categories: Category[] = [
@@ -85,18 +104,17 @@ const categories: Category[] = [
 // );
 
 export default function MarketplacePage() {
-  const [darkMode, setDarkMode] = useState(false);
+  const { darkMode, toggleDarkMode } = useTheme();
   const [cars, setCars] = useState<Car[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // const [searchTerm, setSearchTerm] = useState("");
-  // const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
+  const [sourceWarning, setSourceWarning] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
   const [selectedMake, setSelectedMake] = useState("");
   const [priceRange, setPriceRange] = useState("");
   const [page, setPage] = useState(1);
   const [filteredCars, setFilteredCars] = useState<Car[]>([]);
-  const [isSearchDisabled, setIsSearchDisabled] = useState(false);
-  // const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [sortOption, setSortOption] = useState<string>("newest");
   const { isAuthenticated } = useAuth();
   const router = useRouter();
@@ -104,10 +122,6 @@ export default function MarketplacePage() {
   const searchParams = useSearchParams();
   const initialSearch = searchParams.get("search") || "";
   const [searchTerm, setSearchTerm] = useState(initialSearch);
-
-  const toggleDarkMode = useCallback(() => {
-    setDarkMode((prev) => !prev);
-  }, []);
 
   const getImageUrl = useCallback((car: Car) => {
     const url = car.car_images
@@ -122,104 +136,98 @@ export default function MarketplacePage() {
   const fetchCars = useCallback(async () => {
     try {
       setLoading(true);
-      let apiUrl = `/api/car-listings?page=${page}&limit=30&sort=${sortOption}`;
+      setError(null);
+      setSourceWarning(null);
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: "30",
+        sort: sortOption,
+      });
+      if (selectedMake) params.set("make", selectedMake);
 
-      if (selectedMake) {
-        apiUrl += `&make=${selectedMake}`;
-      } else if (searchTerm && !isSearchDisabled) {
-        apiUrl += `&make=${searchTerm}`; // Using make instead of search parameter
-      }
-
-      // Add sorting parameters
-      switch (sortOption) {
-        case "newest":
-          apiUrl += "&sort=listed_date:desc";
-          break;
-        case "oldest":
-          apiUrl += "&sort=listed_date:asc";
-          break;
-        case "price_high":
-          apiUrl += "&sort=price:desc";
-          break;
-        case "price_low":
-          apiUrl += "&sort=price:asc";
-          break;
-      }
-
-      // Parallel fetch from both sources
-      const [apiResponse, dbResponse] = await Promise.all([
-        fetch(apiUrl, {
+      const [apiResult, dbResult] = await Promise.allSettled([
+        fetch(`/api/car-listings?${params}`, {
           headers: { Accept: "application/json" },
         }),
-        fetch("/api/buy"), // Your DB endpoint
+        fetch("/api/buy"),
       ]);
 
-      if (!apiResponse.ok || !dbResponse.ok) {
-        throw new Error("Failed to fetch cars");
+      if (apiResult.status === "rejected") {
+        throw apiResult.reason;
       }
 
-      const [apiData, dbData] = await Promise.all([
-        apiResponse.json(),
-        dbResponse.json(),
-      ]);
+      const apiResponse = apiResult.value;
+      if (!apiResponse.ok) {
+        throw new Error(
+          `Unable to load external vehicle listings (HTTP ${apiResponse.status}).`
+        );
+      }
 
-      // Transform API cars
-      const apiCars: Car[] = apiData.records.map(
+      const apiData = await apiResponse.json();
+      setHasMore(Boolean(apiData.hasMore));
+
+      const apiCars: Car[] = (apiData.records ?? []).map(
         (car: {
           id: string;
           make: string;
           model: string;
           year: number;
           trim: string;
-          price: string;
-          mileage: string;
+          price: number;
+          mileage: number;
           primaryPhotoUrl: string;
           listed_date: string;
         }) => ({
-          id: car.id.toString(),
+          id: car.id,
           make: car.make,
           model: car.model,
           year: car.year,
           trim: car.trim,
-          price: parseFloat(car.price.replace("$", "").replace(",", "")),
-          mileage: parseInt(car.mileage.replace(" Miles", "").replace(",", "")),
+          price: car.price,
+          mileage: car.mileage,
           image_url: car.primaryPhotoUrl,
           listed_date: car.listed_date,
         })
       );
 
-      // Transform DB cars to match API format
-      const dbCars: Car[] = dbData.map(
-        (car: {
-          car_id: string;
-          car_make: string;
-          car_model: string;
-          car_year: number;
-          car_trim?: string;
-          car_price: number;
-          car_mileage?: number;
-          car_images?: string;
-          listed_date?: string;
-          is_rentable?: boolean;
-        }) => ({
+      let dbData: DatabaseCar[] = [];
+      if (dbResult.status === "fulfilled" && dbResult.value.ok) {
+        try {
+          const result: unknown = await dbResult.value.json();
+          if (Array.isArray(result) && result.every(isDatabaseCar)) {
+            dbData = result;
+          } else {
+            setSourceWarning(
+              "Your own vehicle listings could not be read. Showing external inventory."
+            );
+          }
+        } catch (dbError) {
+          console.error("Unable to read user vehicle listings:", dbError);
+          setSourceWarning(
+            "Your own vehicle listings could not be read. Showing external inventory."
+          );
+        }
+      } else {
+        setSourceWarning(
+          "Your own vehicle listings are temporarily unavailable. Showing external inventory."
+        );
+      }
+
+      const dbCars: Car[] = dbData.map((car) => ({
           id: car.car_id,
           make: car.car_make,
           model: car.car_model,
           year: car.car_year,
-          trim: car.car_trim || "", // Add default value if not in DB
+          trim: car.car_trim || "",
           price: car.car_price,
           mileage: car.car_mileage || 0,
-          image_url: "", // We'll use car_images instead
-          car_images: car.car_images, // S3 image URL or key
+          image_url: "",
+          car_images: car.car_images,
           listed_date: car.listed_date || new Date().toISOString(),
           is_rentable: car.is_rentable,
-        })
-      );
+        }));
 
-      // Combine and sort all cars
       const allCars = [...apiCars, ...dbCars];
-
-      // Sort combined results
       const sortedCars = sortCars(allCars, sortOption);
 
       setCars((prevCars) =>
@@ -230,9 +238,8 @@ export default function MarketplacePage() {
     } finally {
       setLoading(false);
     }
-  }, [page, selectedMake, searchTerm, isSearchDisabled, sortOption]);
+  }, [page, selectedMake, sortOption]);
 
-  // Helper function to sort cars
   const sortCars = (cars: Car[], sortOption: string) => {
     return [...cars].sort((a, b) => {
       switch (sortOption) {
@@ -256,29 +263,16 @@ export default function MarketplacePage() {
     });
   };
 
-  // Update search suggestions when search term changes
-  // useEffect(() => {
-  //   if (searchTerm && !isSearchDisabled) {
-  //     const suggestions = allMakes.filter((make) =>
-  //       make.toLowerCase().includes(searchTerm.toLowerCase())
-  //     );
-  //     setSearchSuggestions(suggestions);
-  //     setIsSearchOpen(true);
-  //   } else {
-  //     setSearchSuggestions([]);
-  //     setIsSearchOpen(false);
-  //   }
-  // }, [searchTerm, isSearchDisabled]);
-
   useEffect(() => {
     let results = cars;
 
-    if (searchTerm && !isSearchDisabled) {
+    if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase();
       results = results.filter(
         (car) =>
           (car.make && car.make.toLowerCase().includes(searchLower)) ||
           (car.model && car.model.toLowerCase().includes(searchLower)) ||
+          String(car.year).includes(searchLower) ||
           (car.trim && car.trim.toLowerCase().includes(searchLower))
       );
     }
@@ -296,46 +290,34 @@ export default function MarketplacePage() {
     }
 
     setFilteredCars(results);
-  }, [cars, searchTerm, selectedMake, priceRange, isSearchDisabled]);
-
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [darkMode]);
+  }, [cars, searchTerm, selectedMake, priceRange]);
 
   useEffect(() => {
     fetchCars();
   }, [fetchCars]);
 
   const handleSearch = useCallback(() => {
-    if (!isSearchDisabled) {
-      setPage(1);
-      fetchCars();
+    setPage(1);
+    setIsSearchOpen(false);
+    const params = new URLSearchParams(window.location.search);
+    if (searchTerm.trim()) {
+      params.set("search", searchTerm.trim());
+    } else {
+      params.delete("search");
     }
-  }, [setPage, fetchCars, isSearchDisabled]);
+    const query = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      query ? `${window.location.pathname}?${query}` : window.location.pathname
+    );
+  }, [searchTerm]);
 
   const handleMakeSelect = useCallback((make: string) => {
-    setSelectedMake((prevMake) => {
-      if (prevMake === make) {
-        setIsSearchDisabled(false);
-        return "";
-      } else {
-        setIsSearchDisabled(true);
-        return make;
-      }
-    });
-    setPage(1);
+    setSelectedMake((prevMake) => prevMake === make ? "" : make);
     setSearchTerm("");
+    setPage(1);
   }, []);
-
-  // const handleSuggestionSelect = (suggestion: string) => {
-  //   setSearchTerm(suggestion);
-  //   setIsSearchOpen(false);
-  //   handleSearch();
-  // };
 
   const loadMore = useCallback(() => {
     setPage((prevPage) => prevPage + 1);
@@ -349,9 +331,8 @@ export default function MarketplacePage() {
     }
   };
 
-  // Modify the car card to show rentable status if available
   const renderCarCard = (car: Car) => (
-    <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-lg transform transition-all duration-300 hover:scale-105">
+    <article className="group overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
       <div className="relative w-full h-48">
         <Image
           src={getImageUrl(car)}
@@ -374,14 +355,14 @@ export default function MarketplacePage() {
           priority={false}
         />
       </div>
-      <div className="p-6">
-        <h3 className="text-xl font-bold mb-2">
+      <div className="p-5">
+        <h3 className="mb-1 text-lg font-semibold tracking-tight">
           {car.make} {car.model} {car.year}
         </h3>
         <p className="text-gray-600 dark:text-gray-300 mb-4">{car.trim}</p>
         <div className="flex justify-between items-center">
-          <p className="text-lg font-semibold text-blue-600 dark:text-blue-400">
-            ${car.price}
+          <p className="text-lg font-semibold text-rose-800 dark:text-rose-300">
+            {car.price > 0 ? `$${car.price.toLocaleString()}` : "Contact for price"}
           </p>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {car.mileage > 0 ? `${car.mileage.toLocaleString()} miles` : "N/A"}
@@ -406,7 +387,7 @@ export default function MarketplacePage() {
           </p>
         )}
         <Button
-          className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white"
+          className="mt-4 w-full bg-rose-800 text-white hover:bg-rose-900"
           onClick={() => handleViewDetails(car.id)}
         >
           {isAuthenticated ? (
@@ -422,14 +403,14 @@ export default function MarketplacePage() {
           )}
         </Button>
       </div>
-    </div>
+    </article>
   );
 
   return (
     <div
       className={`min-h-screen ${
         darkMode ? "dark" : ""
-      } bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 text-gray-900 dark:text-gray-100`}
+      } bg-stone-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100`}
     >
       <Header
         darkMode={darkMode}
@@ -438,139 +419,101 @@ export default function MarketplacePage() {
         onLogout={() => console.log("Logout clicked")}
       />
 
-      <main className="container mx-auto px-6 py-10 md:py-12">
-        <h1 className="text-5xl md:text-7xl font-bold text-center mb-12 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-blue-600 to-purple-600 dark:from-blue-400 dark:via-blue-300 dark:to-purple-400">
-          Find Your Dream Car
-        </h1>
+      <main className="container mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-12">
+        <div className="mb-8 border-b border-stone-200 pb-7 dark:border-gray-800">
+          <p className="mb-2 text-sm font-semibold uppercase tracking-[0.16em] text-rose-800 dark:text-rose-300">The CarMine marketplace</p>
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Find a car that fits your life.</h1>
+          <p className="mt-2 max-w-2xl text-sm text-stone-600 dark:text-gray-400">Browse local listings, compare details, and narrow your search by make, price, or newest arrivals.</p>
+        </div>
 
-        <div className="grid md:grid-cols-4 gap-8 mb-12">
-          <div className="md:col-span-1">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
-              <h2 className="text-xl font-semibold mb-4">Categories</h2>
-              <Accordion type="single" collapsible className="w-full">
+        <div className="grid gap-6 lg:grid-cols-[250px_minmax(0,1fr)]">
+          <aside className="h-fit rounded-xl border border-stone-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
+              <h2 className="mb-4 flex items-center gap-2 text-base font-semibold"><SlidersHorizontal className="h-4 w-4 text-rose-800" /> Browse by make</h2>
+              <Accordion
+                type="multiple"
+                defaultValue={categories.map((_, index) => `category-${index}`)}
+                className="w-full"
+              >
                 {categories.map((category, index) => (
                   <AccordionItem key={index} value={`category-${index}`}>
                     <AccordionTrigger className="text-left">
                       {category.name}
                     </AccordionTrigger>
                     <AccordionContent>
-                      <ScrollArea className="h-[80px] rounded-md">
-                        <div className="flex flex-wrap gap-2 p-2">
-                          {category.makes.map((make) => (
-                            <Badge
-                              key={make}
-                              variant={
-                                selectedMake.toLowerCase() ===
-                                make.toLowerCase()
-                                  ? "default"
-                                  : "outline"
-                              }
-                              className="cursor-pointer"
-                              onClick={() => handleMakeSelect(make)}
-                            >
-                              {make}
-                            </Badge>
-                          ))}
-                        </div>
-                      </ScrollArea>
+                      <div className="flex flex-wrap gap-2 px-1 pb-2">
+                        {category.makes.map((make) => (
+                          <Badge
+                            key={make}
+                            variant={
+                              selectedMake.toLowerCase() === make.toLowerCase()
+                                ? "default"
+                                : "outline"
+                            }
+                            className={`cursor-pointer ${selectedMake.toLowerCase() === make.toLowerCase() ? "border-rose-800 bg-rose-800 text-white hover:bg-rose-900" : "border-stone-300 bg-white text-stone-700 hover:bg-stone-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"}`}
+                            onClick={() => handleMakeSelect(make)}
+                          >
+                            {make}
+                          </Badge>
+                        ))}
+                      </div>
                     </AccordionContent>
                   </AccordionItem>
                 ))}
               </Accordion>
-            </div>
-          </div>
+          </aside>
 
-          <div className="md:col-span-3">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg mb-8">
-              <Label htmlFor="search" className="mb-2 block">
-                Search
-              </Label>
-              <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4">
+          <section className="min-w-0">
+            <div className="mb-6 rounded-xl border border-stone-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900 sm:p-5">
+              <Label htmlFor="search" className="mb-2 block text-sm font-medium">Search listings</Label>
+              <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_190px_190px_auto]">
                 <div className="relative w-full">
-                  {/* <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
-                    <PopoverTrigger asChild>
-                      <Input
-                        id="search"
-                        type="text"
-                        placeholder={
-                          isSearchDisabled
-                            ? "Select category first..."
-                            : "Search cars..."
-                        }
-                        value={searchTerm}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setSearchTerm(value);
-                          if (!isSearchDisabled) {
-                            setIsSearchOpen(value.length >= 2); // only open if 2+ letters
-                          }
-                        }}
-                        className="w-full bg-gray-100 dark:bg-gray-700"
-                        disabled={isSearchDisabled}
-                      />
-                    </PopoverTrigger>
-                    {searchSuggestions.length > 0 && isSearchOpen && (
-                      <PopoverContent className="w-full p-0">
-                        <Command>
-                          <CommandList>
-                            <CommandGroup>
-                              {searchSuggestions.map((suggestion) => (
-                                <CommandItem
-                                  key={suggestion}
-                                  onSelect={() =>
-                                    handleSuggestionSelect(suggestion)
-                                  }
-                                >
-                                  {suggestion}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    )}
-                  </Popover> */}
                   <Input
                     id="search"
                     type="text"
-                    placeholder={
-                      isSearchDisabled
-                        ? "Select category first..."
-                        : "Search cars..."
-                    }
+                    placeholder="Try a make, model, or trim"
                     value={searchTerm}
                     onChange={(e) => {
                       setSearchTerm(e.target.value);
-
-                      // Still preserve query in URL if you want
-                      if (!isSearchDisabled) {
-                        const searchParams = new URLSearchParams(
-                          window.location.search
-                        );
-                        searchParams.set("search", e.target.value);
-                        window.history.replaceState(
-                          null,
-                          "",
-                          `${
-                            window.location.pathname
-                          }?${searchParams.toString()}`
-                        );
-                      }
+                      setIsSearchOpen(Boolean(e.target.value.trim()));
                     }}
-                    className="w-full bg-gray-100 dark:bg-gray-700"
-                    disabled={isSearchDisabled}
+                    onFocus={() => setIsSearchOpen(Boolean(searchTerm.trim()))}
+                    onBlur={() => window.setTimeout(() => setIsSearchOpen(false), 150)}
+                    className="h-11 w-full border-stone-300 bg-stone-50 pl-3 dark:border-gray-700 dark:bg-gray-800"
                   />
+                  {isSearchOpen && searchTerm.trim() && (
+                    <div className="absolute inset-x-0 top-full z-20 mt-1 max-h-72 overflow-y-auto rounded-lg border border-stone-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
+                      {filteredCars.slice(0, 6).map((car) => (
+                        <button
+                          key={car.id}
+                          type="button"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => {
+                            setSearchTerm(`${car.year} ${car.make} ${car.model}`);
+                            setIsSearchOpen(false);
+                          }}
+                          className="block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-stone-100 dark:hover:bg-gray-800"
+                        >
+                          <span className="font-medium">{car.year} {car.make} {car.model}</span>
+                          {car.trim && <span className="ml-2 text-stone-500">{car.trim}</span>}
+                        </button>
+                      ))}
+                      {filteredCars.length === 0 && <p className="px-3 py-2 text-sm text-stone-500">No matching listings on this page.</p>}
+                    </div>
+                  )}
                 </div>
 
                 <Select
                   value={sortOption}
-                  onValueChange={(value) => setSortOption(value)}
+                  onValueChange={(value) => {
+                    setSortOption(value);
+                    setPage(1);
+                  }}
                 >
                   <SelectTrigger
-                    className={`w-full md:w-[220px] ${
+                    className={`h-11 w-full ${
                       darkMode
                         ? "bg-gray-700 text-white"
-                        : "bg-gray-100 text-gray-900"
+                        : "border-stone-300 bg-stone-50 text-gray-900"
                     }`}
                   >
                     <SelectValue placeholder="Sort by" />
@@ -583,12 +526,17 @@ export default function MarketplacePage() {
                   </SelectContent>
                 </Select>
 
-                <Select onValueChange={(value) => setPriceRange(value)}>
+                <Select
+                  value={priceRange || "all"}
+                  onValueChange={(value) =>
+                    setPriceRange(value === "all" ? "" : value)
+                  }
+                >
                   <SelectTrigger
-                    className={`w-full md:w-[290px] ${
+                    className={`h-11 w-full ${
                       darkMode
                         ? "bg-gray-700 text-white"
-                        : "bg-gray-100 text-gray-900"
+                        : "border-stone-300 bg-stone-50 text-gray-900"
                     }`}
                   >
                     <SelectValue placeholder="Price Range" />
@@ -609,8 +557,8 @@ export default function MarketplacePage() {
                 </Select>
                 <Button
                   onClick={handleSearch}
-                  disabled={loading || isSearchDisabled}
-                  className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+                  disabled={loading}
+                  className="h-11 bg-rose-800 px-5 text-white hover:bg-rose-900"
                 >
                   {loading ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -625,9 +573,18 @@ export default function MarketplacePage() {
             {error && (
               <div className="text-red-500 text-center mb-8">{error}</div>
             )}
+            {sourceWarning && (
+              <p
+                role="status"
+                className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200"
+              >
+                {sourceWarning}
+              </p>
+            )}
 
+            <p className="mb-4 text-sm text-stone-600 dark:text-gray-400">{filteredCars.length} {filteredCars.length === 1 ? "vehicle" : "vehicles"} shown</p>
             {filteredCars.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {filteredCars.map((car) => (
                   <div key={car.id}>{renderCarCard(car)}</div>
                 ))}
@@ -644,21 +601,20 @@ export default function MarketplacePage() {
                     setPriceRange("");
                     setSortOption("newest");
                     setPage(1);
-                    setIsSearchDisabled(false);
                   }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-rose-800 text-white hover:bg-rose-900"
                 >
                   Reset Filters
                 </Button>
               </div>
             )}
 
-            {filteredCars.length > 0 && !loading && (
+            {hasMore && filteredCars.length > 0 && !loading && (
               <div className="text-center mt-8">
                 <Button
                   size="lg"
                   onClick={loadMore}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-rose-800 text-white hover:bg-rose-900"
                 >
                   Load More
                 </Button>
@@ -670,7 +626,7 @@ export default function MarketplacePage() {
                 <Loader2 className="w-8 h-8 animate-spin mx-auto" />
               </div>
             )}
-          </div>
+          </section>
         </div>
       </main>
       <Footer darkMode={darkMode} />

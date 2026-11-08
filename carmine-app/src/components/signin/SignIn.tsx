@@ -18,9 +18,10 @@ import { useAuth } from "@/components/contexts/AuthContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Eye, EyeOff } from "lucide-react"; // Ensure you have lucide-react installed
+import { useTheme } from "@/components/ThemeContext";
 
 export default function SigninPage() {
-  const [darkMode, setDarkMode] = useState(false);
+  const { darkMode, toggleDarkMode } = useTheme();
   const [unreadMessages] = useState(2);
   // const [userId, setUserId] = useState("");
   const [email, setEmail] = useState("");
@@ -30,18 +31,6 @@ export default function SigninPage() {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const router = useRouter();
   const { login } = useAuth();
-
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [darkMode]);
-
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-  };
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -139,14 +128,16 @@ export default function SigninPage() {
           console.log("Logout clicked");
         }}
       />
-      <section className="container mx-auto px-4 py-20 md:py-24 bg-gray-100 dark:bg-gray-900">
-        <h1 className="text-4xl font-bold text-center mb-8 text-gray-800 dark:text-white">
+      <section className="min-h-[calc(100vh-6rem)] bg-stone-50 px-4 py-12 text-gray-900 dark:bg-gray-950 dark:text-gray-100 sm:py-16">
+        <h1 className="mb-8 text-center text-3xl font-semibold tracking-tight text-stone-900 dark:text-gray-100 sm:text-4xl">
           Welcome Back
         </h1>
         <div className="max-w-lg mx-auto">
           <Card
-            className={`shadow-lg rounded-lg ${
-              darkMode ? "bg-gray-800 text-white" : "bg-white"
+            className={`rounded-xl border shadow-sm ${
+              darkMode
+                ? "border-gray-700 bg-gray-900 text-gray-100"
+                : "border-stone-200 bg-white text-stone-900"
             }`}
           >
             <CardHeader className="text-center">
@@ -169,8 +160,10 @@ export default function SigninPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className={`p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        darkMode ? "bg-gray-700 text-white border-gray-600" : ""
+                      className={`rounded-lg border p-3 focus:outline-none focus:ring-2 focus:ring-rose-800 ${
+                        darkMode
+                          ? "border-gray-600 bg-gray-800 text-white"
+                          : "border-stone-300 bg-white text-stone-900"
                       }`}
                     />
                   </div>
@@ -186,7 +179,7 @@ export default function SigninPage() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                        className={`p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 pr-12 ${
+                        className={`rounded-lg border p-3 pr-12 focus:outline-none focus:ring-2 focus:ring-rose-800 ${
                           darkMode
                             ? "bg-gray-700 text-white border-gray-600"
                             : ""
@@ -211,7 +204,7 @@ export default function SigninPage() {
                     <input
                       id="rememberMe"
                       type="checkbox"
-                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                      className="h-4 w-4 rounded border-stone-300 bg-stone-50 text-rose-800 focus:ring-rose-800 dark:border-gray-600 dark:bg-gray-800"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
                     />
@@ -225,7 +218,7 @@ export default function SigninPage() {
                 </div>
                 {error && <p className="text-red-500 mt-4">{error}</p>}
                 <Button
-                  className="w-full mt-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-300"
+                  className="mt-6 w-full rounded-lg bg-rose-800 py-3 text-white transition-colors hover:bg-rose-900"
                   type="submit"
                 >
                   Login
@@ -235,13 +228,13 @@ export default function SigninPage() {
             <CardFooter className="flex justify-between mt-4">
               <Link
                 href="/forgot-password"
-                className="text-sm text-blue-600 hover:underline"
+                className="text-sm text-rose-800 hover:underline dark:text-rose-300"
               >
                 Forgot Password?
               </Link>
               <Link
                 href="/signup"
-                className="text-sm text-blue-600 hover:underline"
+                className="text-sm text-rose-800 hover:underline dark:text-rose-300"
               >
                 Create an account
               </Link>

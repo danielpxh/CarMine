@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -9,42 +9,39 @@ import {
   Key,
   Zap,
   Star,
+  Quote,
   Shield,
-  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { useTheme } from "@/components/ThemeContext";
 import Link from "next/link";
 import "./globals.css";
 
 export default function CarMine() {
-  const [darkMode, setDarkMode] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { darkMode, toggleDarkMode } = useTheme();
   const [unreadMessages] = useState(2);
   const [searchTerm, setSearchTerm] = useState("");
   const router = useRouter();
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 3000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [darkMode]);
-
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-  };
+  const testimonials = [
+    {
+      name: "John D.",
+      comment:
+        "CarMine made buying my dream car a breeze. Highly recommended!",
+    },
+    {
+      name: "Sarah M.",
+      comment:
+        "The parts marketplace saved me time and money. Great selection and prices.",
+    },
+    {
+      name: "Mike R.",
+      comment:
+        "Renting through CarMine was smooth and hassle-free. Will use again!",
+    },
+  ];
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,22 +50,10 @@ export default function CarMine() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-900">
-        <div className="text-center">
-          <Loader2 className="w-16 h-16 animate-spin mx-auto" />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
       className={`min-h-screen ${
-        darkMode
-          ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-gray-100"
-          : "bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200 text-gray-900"
+        darkMode ? "bg-gray-950 text-gray-100" : "bg-stone-50 text-gray-900"
       }`}
     >
       <Header
@@ -78,27 +63,27 @@ export default function CarMine() {
         onLogout={() => console.log("Logout clicked")}
       />
 
-      <main className="container mx-auto px-4 py-20 md:py-24">
-        <h1
-          className={`text-5xl md:text-7xl font-bold text-center mb-12 text-transparent bg-clip-text ${
-            darkMode
-              ? "bg-gradient-to-r from-blue-400 via-blue-300 to-purple-400"
-              : "bg-gradient-to-r from-blue-400 via-blue-600 to-purple-600"
-          }`}
-        >
-          Revolutionize Your Car Experience
+      <main className="container mx-auto max-w-7xl px-4 py-12 md:py-16">
+        <h1 className="mx-auto mb-4 max-w-4xl text-center text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl">
+          The right car changes everything.
         </h1>
+        <p className="mx-auto mb-10 max-w-2xl text-center text-base text-stone-600 dark:text-gray-400 sm:text-lg">
+          Find your next vehicle, list one for sale, or explore a rental—all in
+          one place.
+        </p>
 
-        <div className="max-w-4xl mx-auto mb-20">
+        <div className="mx-auto mb-16 max-w-3xl">
           <form
             onSubmit={handleSearch}
-            className={`flex items-center space-x-2 ${
-              darkMode ? "bg-gray-800" : "bg-white"
-            } p-2 rounded-full shadow-lg`}
+            className={`flex flex-col gap-2 rounded-xl border p-2 shadow-sm sm:flex-row ${
+              darkMode
+                ? "border-gray-700 bg-gray-900"
+                : "border-stone-200 bg-white"
+            }`}
           >
             <Input
               type="text"
-              placeholder="Search New Or Rental Cars Here..."
+              placeholder="Search by make, model, or year"
               className={`flex-grow bg-transparent border-none focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:ring-0 focus-visible:ring-offset-0 ${
                 darkMode
                   ? "text-gray-100 placeholder-gray-400"
@@ -109,18 +94,14 @@ export default function CarMine() {
             />
             <Button
               type="submit"
-              className={`${
-                darkMode
-                  ? "bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-                  : "bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-              } text-white rounded-full px-8 py-6 text-lg font-semibold`}
+              className="bg-rose-800 px-6 text-white hover:bg-rose-900"
             >
               <Search className="w-5 h-5 mr-2" /> Search
             </Button>
           </form>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-24 py-16">
+        <div className="mb-20 grid grid-cols-1 gap-5 py-4 md:grid-cols-2 lg:grid-cols-3">
           {[
             {
               icon: Car,
@@ -149,14 +130,16 @@ export default function CarMine() {
           ].map((item, index) => (
             <div
               key={index}
-              className={`${
-                darkMode ? "bg-gray-800" : "bg-white"
-              } p-8 rounded-2xl shadow-xl transform transition-transform duration-500 hover:scale-105`}
+              className={`rounded-xl border p-7 shadow-sm transition-shadow hover:shadow-md ${
+                darkMode
+                  ? "border-gray-700 bg-gray-900"
+                  : "border-stone-200 bg-white"
+              }`}
             >
               <div className="flex justify-center mb-6">
                 <item.icon
                   className={`w-20 h-20 ${
-                    darkMode ? "text-blue-400" : "text-blue-600"
+                    darkMode ? "text-rose-300" : "text-rose-800"
                   }`}
                 />
               </div>
@@ -175,13 +158,7 @@ export default function CarMine() {
                 {item.description}
               </p>
               <Link href={item.link}>
-                <Button
-                  className={`w-full ${
-                    darkMode
-                      ? "bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-                      : "bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-                  } text-white text-lg font-semibold py-6`}
-                >
+                <Button className="w-full bg-rose-800 py-6 text-lg font-semibold text-white hover:bg-rose-900">
                   {item.action}
                 </Button>
               </Link>
@@ -190,17 +167,13 @@ export default function CarMine() {
         </div>
 
         <section
-          className={`mb-24 ${
-            darkMode ? "bg-gray-800" : "bg-white"
-          } rounded-3xl shadow-2xl p-12`}
+          className={`mb-20 rounded-xl border p-6 shadow-sm sm:p-10 ${
+            darkMode
+              ? "border-gray-700 bg-gray-900"
+              : "border-stone-200 bg-white"
+          }`}
         >
-          <h2
-            className={`text-4xl font-bold mb-12 text-center text-transparent bg-clip-text ${
-              darkMode
-                ? "bg-gradient-to-r from-blue-400 via-blue-300 to-purple-400"
-                : "bg-gradient-to-r from-blue-400 via-blue-600 to-purple-600"
-            }`}
-          >
+          <h2 className="mb-10 text-center text-3xl font-semibold tracking-tight">
             Why Choose CarMine?
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
@@ -238,7 +211,7 @@ export default function CarMine() {
               >
                 <item.icon
                   className={`w-16 h-16 ${
-                    darkMode ? "text-blue-400" : "text-blue-600"
+                    darkMode ? "text-rose-300" : "text-rose-800"
                   } mb-4`}
                 />
                 <h3
@@ -256,24 +229,19 @@ export default function CarMine() {
           </div>
         </section>
 
-        <section className="mb-24 bg-gradient-to-r from-blue-500 to-purple-600 rounded-3xl shadow-2xl p-12 text-white">
-          <h2 className="text-4xl font-bold mb-8 text-center">
+        <section className="mb-20 rounded-xl bg-rose-900 px-6 py-10 text-white sm:px-12">
+          <h2 className="mb-5 text-center text-3xl font-semibold tracking-tight">
             Join the CarMine Community
           </h2>
-          <p className="text-xl text-center mb-12">
-            Get exclusive deals, automotive news, and connect with fellow car
-            enthusiasts.
+          <p className="mb-8 text-center text-stone-200">
+            Create an account to save vehicles and manage your listings.
           </p>
           <div className="flex justify-center">
             <Link href="/signup">
               <Button
                 size="lg"
                 variant="secondary"
-                className={`${
-                  darkMode
-                    ? "bg-gray-800 text-blue-400 hover:bg-gray-950"
-                    : "bg-white text-blue-600 hover:bg-gray-100"
-                } font-semibold px-8 py-6 text-xl`}
+                className="bg-white px-8 py-6 font-semibold text-rose-900 hover:bg-stone-100"
               >
                 Sign Up Now
               </Button>
@@ -282,63 +250,66 @@ export default function CarMine() {
         </section>
 
         <section className="mb-24">
-          <h2
-            className={`text-4xl font-bold mb-12 text-center text-transparent bg-clip-text ${
-              darkMode
-                ? "bg-gradient-to-r from-blue-400 via-blue-300 to-purple-400"
-                : "bg-gradient-to-r from-blue-400 via-blue-600 to-purple-600"
-            }`}
-          >
-            What Our Customers Say
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            {[
-              {
-                name: "John D.",
-                comment:
-                  "CarMine made buying my dream car a breeze. Highly recommended!",
-              },
-              {
-                name: "Sarah M.",
-                comment:
-                  "The parts marketplace saved me time and money. Great selection and prices.",
-              },
-              {
-                name: "Mike R.",
-                comment:
-                  "Renting through CarMine was smooth and hassle-free. Will use again!",
-              },
-            ].map((testimonial, index) => (
-              <div
-                key={index}
-                className={`${
-                  darkMode ? "bg-gray-800" : "bg-white"
-                } p-6 rounded-xl shadow-lg`}
-              >
-                <div className="flex items-center mb-4">
-                  <Star className="w-5 h-5 text-yellow-400" />
-                  <Star className="w-5 h-5 text-yellow-400" />
-                  <Star className="w-5 h-5 text-yellow-400" />
-                  <Star className="w-5 h-5 text-yellow-400" />
-                  <Star className="w-5 h-5 text-yellow-400" />
-                </div>
-                <p
-                  className={`${
-                    darkMode ? "text-gray-300" : "text-gray-600"
-                  } mb-4`}
-                >
-                  &quot;{testimonial.comment}&quot;
-                </p>
-                <p
-                  className={`font-semibold ${
-                    darkMode ? "text-gray-100" : "text-gray-800"
-                  }`}
-                >
-                  - {testimonial.name}
-                </p>
-              </div>
-            ))}
+          <div className="mb-8 flex flex-col items-center text-center">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-rose-800 dark:text-rose-300">
+              From our community
+            </p>
+            <h2 className="text-3xl font-semibold tracking-tight">
+              What our customers say
+            </h2>
           </div>
+          <div
+            className="testimonial-viewport"
+            role="region"
+            aria-label="Customer testimonials"
+            tabIndex={0}
+          >
+            <div className="testimonial-track">
+              {[0, 1].map((copy) => (
+                <div
+                  key={copy}
+                  className="testimonial-group"
+                  aria-hidden={copy === 1}
+                >
+                  {testimonials.map((testimonial) => (
+                    <article
+                      key={`${copy}-${testimonial.name}`}
+                      className={`testimonial-card ${
+                        darkMode
+                          ? "border-gray-700 bg-gray-900"
+                          : "border-stone-200 bg-white"
+                      }`}
+                    >
+                      <Quote
+                        className="mb-5 h-5 w-5 text-rose-800 dark:text-rose-300"
+                        aria-hidden="true"
+                      />
+                      <p
+                        className={`mb-7 text-base leading-7 ${
+                          darkMode ? "text-gray-300" : "text-stone-700"
+                        }`}
+                      >
+                        &ldquo;{testimonial.comment}&rdquo;
+                      </p>
+                      <p
+                        className={`mt-auto text-sm font-semibold ${
+                          darkMode ? "text-gray-100" : "text-stone-900"
+                        }`}
+                      >
+                        {testimonial.name}
+                      </p>
+                      <p className="mt-1 text-xs text-stone-500 dark:text-gray-400">
+                        CarMine customer
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+          <p className="mt-4 text-center text-xs text-stone-500 dark:text-gray-400">
+            Pause the carousel by hovering over it or focusing it.
+          </p>
         </section>
       </main>
 

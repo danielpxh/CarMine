@@ -1,58 +1,115 @@
 import { NextResponse } from "next/server";
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
+type AutoListing = {
+  vin?: string;
+  vehicle?: {
+    vin?: string;
+    make?: string;
+    model?: string;
+    year?: number;
+    trim?: string;
+  };
+  retailListing?: {
+    price?: number;
+    miles?: number;
+    primaryImage?: string;
+  };
+  createdAt?: string;
+  updatedAt?: string;
+};
 
-  const page = searchParams.get("page") || "1";
-  const limit = searchParams.get("limit") || "30";
-  const make = searchParams.get("make") || "";
-  const sort = searchParams.get("sort") || "listed_date:desc";
-  const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+function normalizeListing(listing: AutoListing) {
+  const vehicle = listing.vehicle;
+  const retailListing = listing.retailListing;
 
-  const apiUrl = `https://auto.dev/api/listings?apikey=${API_KEY}&page=${page}&limit=${limit}${
-    make ? `&make=${make}` : ""
-  }&sort=${sort}`;
+  return {
+    id: vehicle?.vin ?? listing.vin ?? "",
+    make: vehicle?.make ?? "",
+    model: vehicle?.model ?? "",
+    year: vehicle?.year ?? 0,
+    trim: vehicle?.trim ?? "",
+    price: retailListing?.price ?? 0,
+    mileage: retailListing?.miles ?? 0,
+    primaryPhotoUrl: retailListing?.primaryImage ?? "",
+    listed_date: listing.createdAt ?? listing.updatedAt ?? "",
+  };
+}
+
+export async function GET(request: Request) {
+  const apiKey = process.env.AUTO_DEV_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json(
+      {
+        error:
+          "Auto.dev is not configured. Set AUTO_DEV_API_KEY on the server.",
+      },
+      { status: 503 }
+    );
+  }
+
+  const { searchParams } = new URL(request.url);
+  const page = Number(searchParams.get("page") ?? 1);
+  const limit = Number(searchParams.get("limit") ?? 30);
+  const sort = searchParams.get("sort") ?? "newest";
+  const make = searchParams.get("make")?.trim();
+
+  if (
+    !Number.isInteger(page) ||
+    page < 1 ||
+    !Number.isInteger(limit) ||
+    limit < 1 ||
+    limit > 100
+  ) {
+    return NextResponse.json(
+      { error: "Page must be a positive integer and limit must be between 1 and 100." },
+      { status: 400 }
+    );
+  }
+
+  const sortBy =
+    sort === "oldest"
+      ? "createdAt.asc"
+      : sort === "price_high"
+        ? "price.desc"
+        : sort === "price_low"
+          ? "price.asc"
+          : "createdAt.desc";
+  const apiUrl = new URL("https://api.auto.dev/listings");
+  apiUrl.searchParams.set("page", String(page));
+  apiUrl.searchParams.set("limit", String(limit));
+  apiUrl.searchParams.set("sort", sortBy);
+  if (make) apiUrl.searchParams.set("vehicle.make", make);
 
   try {
     const response = await fetch(apiUrl, {
-      headers: { Accept: "application/json" },
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      next: { revalidate: 60 },
     });
 
     if (!response.ok) {
+      console.error(
+        `Auto.dev listings request failed with status ${response.status}`
+      );
       return NextResponse.json(
-        { error: "Failed to fetch from auto.dev" },
+        { error: "Unable to load vehicle listings from Auto.dev." },
         { status: response.status }
       );
     }
 
-    const data = await response.json();
-
-    // Add CORS headers
-    const res = NextResponse.json(data);
-    res.headers.set("Access-Control-Allow-Origin", "*");
-    res.headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
-    res.headers.set(
-      "Access-Control-Allow-Headers",
-      "Content-Type, Authorization"
-    );
-    return res;
+    const data: { data?: AutoListing[]; links?: { next?: string | null } } =
+      await response.json();
+    return NextResponse.json({
+      records: (data.data ?? []).map(normalizeListing),
+      hasMore: Boolean(data.links?.next),
+    });
   } catch (error) {
-    console.error("Error fetching car listings:", error);
+    console.error("Auto.dev listings request failed:", error);
     return NextResponse.json(
-      { error: "Internal Server Error" },
-      { status: 500 }
+      { error: "Unable to load vehicle listings from Auto.dev." },
+      { status: 502 }
     );
   }
-}
-
-// Handle preflight requests
-export async function OPTIONS() {
-  const res = new NextResponse(null, { status: 200 });
-  res.headers.set("Access-Control-Allow-Origin", "*");
-  res.headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.headers.set(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization"
-  );
-  return res;
 }

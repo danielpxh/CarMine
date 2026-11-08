@@ -14,6 +14,7 @@ const nextConfig = {
       "content.homenetiol.com",
       "placehold.co",
       "images.dealersync.com",
+      "retail.photos.vin",
     ],
     remotePatterns: [
       {
@@ -31,6 +32,11 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "images.dealersync.com"
+      },
+      {
+        protocol: "https",
+        hostname: "retail.photos.vin",
+        pathname: "/**",
       },
       {
         protocol: "http",
@@ -124,14 +130,6 @@ const nextConfig = {
             value: "Content-Type, Authorization", // Specify allowed headers
           },
         ],
-      },
-    ];
-  },
-  async rewrites() {
-    return [
-      {
-        source: "/favicon.ico",
-        destination: "/public/favicon.ico",
       },
     ];
   },

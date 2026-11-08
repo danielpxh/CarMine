@@ -13,17 +13,16 @@ export default function Footer({ darkMode }: FooterProps) {
     <footer
       className={`${
         darkMode
-          ? "bg-gradient-to-r from-gray-800 to-gray-900"
-          : "bg-gradient-to-r from-blue-600 to-purple-600"
+          ? "bg-gray-950"
+          : "bg-stone-900"
       } text-white py-12`}
     >
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           <div>
             <h3 className="text-2xl font-bold mb-4">About CarMine</h3>
-            <p className={darkMode ? "text-gray-300" : "text-blue-100"}>
-              Revolutionizing the automotive industry with cutting-edge
-              technology and user-centric services.
+            <p className="text-stone-300">
+              A clearer, more considered way to buy, sell, and rent vehicles.
             </p>
           </div>
           <div>
@@ -46,8 +45,8 @@ export default function Footer({ darkMode }: FooterProps) {
                     }`}
                     className={`${
                       darkMode
-                        ? "text-gray-300 hover:text-blue-400"
-                        : "text-blue-100 hover:text-white"
+                        ? "text-gray-300 hover:text-rose-300"
+                        : "text-stone-300 hover:text-white"
                     } transition-colors`}
                   >
                     {item}
@@ -65,8 +64,8 @@ export default function Footer({ darkMode }: FooterProps) {
                     href={`/${item.toLowerCase().replace(" ", "")}`}
                     className={`${
                       darkMode
-                        ? "text-gray-300 hover:text-blue-400"
-                        : "text-blue-100 hover:text-white"
+                        ? "text-gray-300 hover:text-rose-300"
+                        : "text-stone-300 hover:text-white"
                     } transition-colors`}
                   >
                     {item}
@@ -96,8 +95,8 @@ export default function Footer({ darkMode }: FooterProps) {
                   href={platform.link}
                   className={`${
                     darkMode
-                      ? "text-gray-300 hover:text-blue-400"
-                      : "text-blue-100 hover:text-white"
+                      ? "text-gray-300 hover:text-rose-300"
+                      : "text-stone-300 hover:text-white"
                   } transition-colors`}
                   aria-label={platform.name}
                   target="_blank"
@@ -113,7 +112,7 @@ export default function Footer({ darkMode }: FooterProps) {
           className={`text-center ${
             darkMode
               ? "text-gray-400 border-t border-gray-700"
-              : "text-blue-100 border-t border-blue-400"
+              : "text-stone-400 border-t border-stone-700"
           } pt-8`}
         >
           <p>&copy; {new Date().getFullYear()} CarMine. All rights reserved.</p>
